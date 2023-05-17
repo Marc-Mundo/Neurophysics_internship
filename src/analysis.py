@@ -1,4 +1,10 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter1d
+from scipy.stats import binned_statistic
+from scipy.stats import sem
+from scipy.stats import ttest_ind
 
 
 def lick_counter(trial_duration, lick_start, lick_end, licks):
@@ -55,11 +61,6 @@ def compute_feature_position(timestamp, position, min_pos, max_pos):
 
     # Return the normalized position value.
     return norm_pos
-
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 
 def position_event_histogram(b_data, trial_data):
@@ -135,11 +136,6 @@ def position_event_histogram(b_data, trial_data):
     plt.show()
 
 
-import numpy as np
-from scipy.ndimage import gaussian_filter1d
-import matplotlib.pyplot as plt
-
-
 def compute_velocity(
     b_data, dt=1.0 / 1000.0, pos_sigma=2, vel_sigma=50, vel_win=10000, vel_smooth=100
 ):
@@ -184,10 +180,6 @@ def compute_velocity(
     return vel
 
 
-import matplotlib.pyplot as plt
-from scipy.stats import binned_statistic
-
-
 def pos_vel_scatterplot(norm_pos, vel, nbins=50):
     """
     Create a scatter plot of the relationship between position and velocity
@@ -220,10 +212,6 @@ def pos_vel_scatterplot(norm_pos, vel, nbins=50):
 
     # Display the scatter plot.
     plt.show()
-
-
-import numpy as np
-import pandas as pd
 
 
 def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
@@ -264,11 +252,6 @@ def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
     vel_matrix = vel_matrix[:count, :]
 
     return vel_matrix
-
-
-import numpy as np
-from scipy.stats import sem
-import matplotlib.pyplot as plt
 
 
 def avg_std_sem_velocity(vel_matrix, t_on, t_off):
@@ -313,9 +296,6 @@ def avg_std_sem_velocity(vel_matrix, t_on, t_off):
 
     # Return the average, standard deviation, and standard error of the mean of velocity as a tuple.
     return avg_vel, std_vel, sem_vel
-
-
-from scipy.stats import ttest_ind
 
 
 def ttest_speed_distribution(vel_matrix, t_on, alpha=0.05):
