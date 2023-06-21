@@ -5,135 +5,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.stats import binned_statistic
 from scipy.stats import sem
 from scipy.stats import ttest_ind
-
-
-def lick_counter(trial_duration, lick_start, lick_end, licks):
-    """
-    Counts the number of licks that occur during a specified time window and calculates the fraction of licks that
-    occur at the reward onset time.
-
-    PARAMETERS:
-        trial_duration (float): The duration of the trial in seconds.
-        lick_start (int): The timepoint at which the reward was presented.
-        lick_end (int): The timepoint at which the reward window ends.
-        licks (numpy array): A numpy array of shape (m,) containing the timepoints at which licks occurred.
-
-    RETURNS:
-        tuple: A tuple containing the lick count and fraction of licks at the reward onset time.
-    """
-
-    # Initialize the lick counter.
-    lick_counter = 0
-
-    # Iterate through each row in the dataframe.
-    for i in range(len(lick_start)):
-        # Check if the lick time falls within the reward window.
-        for lick in licks:
-            if lick_start[i] <= lick <= lick_end[i]:
-                lick_counter += 1
-
-    # Compute the fraction of licks that occur at the reward onset time.
-    reward_licks = lick_counter / len(licks) * 100
-
-    return lick_counter, reward_licks
-
-
-def compute_feature_position(timestamp, position, min_pos, max_pos):
-    """
-    Takes the time of an event (in index), the position array, the min of the trial position and the max
-    of the trial position, returns the normalized position of the event.
-
-    PARAMETERS:
-    timestamp (int) : timestamp of the event (in index).
-    position (numpy.ndarray) : position array.
-    min_pos (float) : minimum position value of the trial.
-    max_pos (float) : maximum position value of the trial.
-
-    RETURNS:
-    norm_pos (float): normalized position of the event.
-    """
-
-    # Extract the position value at the given timestamp.
-    pos = position[int(timestamp)]
-
-    # Calculate the normalized position of the event based on the min and max position values.
-    norm_pos = (pos - min_pos) / (max_pos - min_pos)
-
-    # Return the normalized position value.
-    return norm_pos
-
-
-def position_event_histogram(b_data, trial_data):
-    """
-    Plot a histogram of the normalized position with markers for specific events:
-    Reward zone onset, Tunnel1 onset, Sound onset
-
-    PARAMETERS:
-    b_data (pandas.DataFrame) : a DataFrame containing the behavior data.
-    trial_data (pandas.DataFrame) : a DataFrame containing the trial data.
-
-    RETURNS:
-    A histogram plot of the normalized position data with markers for the event onsets.
-    """
-
-    # Get the position data from the behavior data DataFrame.
-    position = b_data["position"]
-
-    # Initialize lists to store the positions of the event onsets.
-    rz_onsets = []
-    tunnel1_onsets = []
-    sound_onsets = []
-
-    # Loop through each trial in the trial data DataFrame.
-    for i in range(len(trial_data)):
-        # Get the current trial row.
-        row = trial_data.iloc[i]
-
-        # Extract the onset and offset times for the current trial segment.
-        onset = row["env_onset"].astype(int)
-        offset = row["tunnel2_offset"]
-
-        # Get the position data for the current trial segment.
-        pos_segment = position[onset:offset]
-
-        # Compute the minimum and maximum positions in the current trial segment.
-        min_pos = np.min(pos_segment)
-        max_pos = np.max(pos_segment)
-
-        # Compute the positions of the reward zone onset, tunnel 1 onset, and sound onset.
-        rz_pos = compute_feature_position(
-            row["reward_zone_onset"], position, min_pos, max_pos
-        )
-        rz_onsets.append(rz_pos)
-
-        t1_pos = compute_feature_position(
-            row["tunnel1_onset"], position, min_pos, max_pos
-        )
-        tunnel1_onsets.append(t1_pos)
-
-        if pd.notnull(row["sound_onset"]):  # Skip NaNs.
-            sound_pos = compute_feature_position(
-                int(row["sound_onset"]), position, min_pos, max_pos
-            )
-            sound_onsets.append(sound_pos)
-
-        # Normalize the position data for the current trial segment.
-        pos_segment = (pos_segment - np.min(pos_segment)) / (
-            np.max(pos_segment) - np.min(pos_segment)
-        )
-
-        # Concatenate the normalized position data for the current trial segment with the previous segments.
-        if i == 0:
-            norm_pos = pos_segment
-        else:
-            norm_pos = np.hstack([norm_pos, pos_segment])
-
-    # Plot a histogram of the normalized position data with markers for the event onsets.
-    plt.hist(norm_pos, bins=30, density=True)
-    plt.axvline(x=np.mean(rz_onsets), c="r")
-    plt.axvline(x=np.mean(tunnel1_onsets), c="g")
-    plt.axvline(x=np.nanmean(sound_onsets), c="m")
-    plt.show()
+import os
 
 
 def compute_velocity(
@@ -155,7 +27,6 @@ def compute_velocity(
     RETURNS:
     tuple: A tuple containing the velocity matrix and a plot of the velocity data.
     """
-
     # Apply Gaussian smoothing to the position data to reduce noise.
     pos = gaussian_filter1d(b_data["position"].astype(float), sigma=pos_sigma)
 
@@ -196,7 +67,6 @@ def pos_vel_scatterplot(norm_pos, vel, nbins=50):
     RETURNS:
     A scatterplot with graph between datapoints to visualize the relationship between position and velocity.
     """
-
     # Calculate binned statistics of velocity as a function of position.
     avg_vel, edges, _ = binned_statistic(norm_pos, vel, bins=nbins)
 
@@ -228,7 +98,6 @@ def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
     RETURNS:
     vel_matrix (numpy.ndarray): a 2D array of velocity values for each trial, with shape (number of trials, t_on + t_off).
     """
-
     # Initialize the velocity matrix and count variable.
     vel_matrix = np.zeros((len(trial_matrix), t_on + t_off))
     count = 0
@@ -254,22 +123,24 @@ def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
     return vel_matrix
 
 
-def avg_std_sem_velocity(vel_matrix, t_on, t_off):
+def avg_std_sem_velocity(vel_matrix, t_on, t_off, session_path, save_folder):
     """
     Computes the average, standard deviation, and standard error of the mean of velocity from a velocity matrix,
     and plots the average velocity over time with the fill_between visible.
+    Saves the plot to the specified save_folder
 
     PARAMETERS:
     vel_matrix (numpy.ndarray): A 2D numpy array where each row represents a different trial and each column
         represents a different time point.
     t_on (int): The duration of the time period before sound onset, in milliseconds.
     t_off (int): The duration of the time period after sound onset, in milliseconds.
+    session_path (WindowsPath): Path of the session.
+    save_folder (str): Path of the folder to save the image to.
 
     RETURNS:
     tuple: A tuple of 3 numpy arrays containing the average velocity, standard deviation, and standard error of
         the mean of velocity, respectively.
     """
-
     # Compute the average velocity across trials for each time point.
     avg_vel = np.mean(vel_matrix, axis=0)
 
@@ -291,6 +162,18 @@ def avg_std_sem_velocity(vel_matrix, t_on, t_off):
     # Draw a red vertical line at the time of sound onset.
     plt.axvline(x=0, c="r")
 
+    # Get the session number from the session path
+    session_number = os.path.basename(session_path)
+
+    # Set the image file name
+    image_name = f"{session_number}_average_velocity_plot.png"
+
+    # Set the complete save path including the folder and image name
+    save_path = os.path.join(save_folder, image_name)
+
+    # Save the plot as an image file
+    plt.savefig(save_path)
+
     # Show the plot.
     plt.show()
 
@@ -310,7 +193,6 @@ def ttest_speed_distribution(vel_matrix, t_on, alpha=0.05):
     t (float): the t-test statistic.
     p (float): the p-value.
     """
-
     # Slice vel_matrix at sound onset.
     vel_before = vel_matrix[
         :, :t_on

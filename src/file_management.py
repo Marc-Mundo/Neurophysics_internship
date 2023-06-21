@@ -2,6 +2,40 @@ import glob
 from pathlib import Path
 import pickle
 import numpy as np
+from pathlib import Path
+
+
+def access_data(*data_folders):
+    """
+    Construct a list of specific data paths based on the provided data folders.
+    The function uses the folder names within each data folder.
+
+    Args:
+        *data_folders: Variable number of data folder paths.
+
+    Returns:
+        List of Path objects representing the specific data paths.
+    """
+    # Create Path objects for the data folders
+    data_folders = [Path(folder) for folder in data_folders]
+
+    # Create a list to store all the data paths
+    all_data_paths = []
+
+    # Iterate over the data folders
+    for folder in data_folders:
+        # Extract the folder names within each data folder
+        folder_names = [
+            sub_folder.name for sub_folder in folder.iterdir() if sub_folder.is_dir()
+        ]
+
+        # Create the specific data paths
+        data_paths = [folder.joinpath(sub_folder) for sub_folder in folder_names]
+
+        # Add the data paths to the main list
+        all_data_paths.extend(data_paths)
+
+    return all_data_paths
 
 
 def get_files_in_data_path(data_path):

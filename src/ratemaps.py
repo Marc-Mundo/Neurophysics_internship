@@ -1,3 +1,4 @@
+import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +18,6 @@ def normpos_slicedtime(subset, b_data, onset_col, offset_col):
         tuple: A tuple containing the normalized position (norm_pos) and sliced time (sliced_time).
 
     """
-
     # Extract the position and time information out of the behavioural data.
     position = b_data["position"]
     times = b_data["time"]
@@ -60,7 +60,6 @@ def get_spike_positions(n_data, norm_pos, b_data):
 
     Returns:
         numpy.ndarray: Array of spike positions.
-
     """
     spikes = n_data["deconvolved"]
     dt = 1 / 30.0  # scanner recording frequency
@@ -111,7 +110,6 @@ def skaggs_info_perspike(rate_map, occupancy_prob, epsilon=pow(10, -15)):
         print(info_per_spike)  # Output: 0.851251...
 
     """
-
     rate_map = rate_map.flatten()
     occupancy_prob = occupancy_prob.flatten()
     avg_rate = np.sum(rate_map * occupancy_prob)
@@ -136,8 +134,8 @@ def compute_firing_rate_maps(spike_positions, norm_pos):
         numpy.ndarray: Firing rate maps.
         numpy.ndarray: Occupancy.
     """
-
-    space_bins = np.arange(0.0, 1.0, 0.05)  # Range of position = norm_pos
+    # Range of position = norm_pos, number of bins is 40 (1/0,025)
+    space_bins = np.arange(0.0, 1.0, 0.025)
     vr_dt = 1 / 1000.0  # Frequency of VR-acquisition system
 
     # Compute histograms for each cell.
@@ -155,6 +153,44 @@ def compute_firing_rate_maps(spike_positions, norm_pos):
     return firing_rate_maps, occupancy
 
 
+def compute_normalised_firing_rate_maps(spike_positions, norm_pos):
+    """
+    Compute normalized firing rate maps based on spike positions and normalized positions.
+
+    Args:
+        spike_positions (array-like): Array of spike positions.
+        norm_pos (array-like): Array of normalized positions.
+
+    Returns:
+        numpy.ndarray: Firing rate maps.
+        numpy.ndarray: Occupancy.
+    """
+    # Range of position = norm_pos, number of bins is 40 (1/0,025)
+    space_bins = np.arange(0.0, 1.0, 0.025)
+    vr_dt = 1 / 1000.0  # Frequency of VR-acquisition system
+
+    # Compute histograms for each cell.
+    spikes_hist = [np.histogram(s, space_bins)[0] for s in spike_positions]
+
+    # Put them together into a matrix of floating-point numbers (for plotting).
+    spikes_hist = np.vstack(spikes_hist).astype(np.float64)
+
+    # Compute occupancy histogram to normalize the firing rate maps.
+    occupancy = np.histogram(norm_pos, space_bins)[0] * vr_dt
+
+    # Compute firing rate maps.
+    firing_rate_maps = spikes_hist / occupancy
+
+    # Normalize tuning curves (firing rate maps) by dividing each by its maximum value.
+    max_values = np.max(firing_rate_maps, axis=1)
+    max_values[
+        max_values == 0
+    ] = 1e-10  # Replace zero values with a small non-zero value
+    normalized_ratemaps = firing_rate_maps / max_values[:, np.newaxis]
+
+    return normalized_ratemaps, occupancy
+
+
 def calculate_spatial_info(firing_rate_maps, occupancy):
     """
     Calculate the spatial information for each neuron given firing rate maps and occupancy.
@@ -167,7 +203,6 @@ def calculate_spatial_info(firing_rate_maps, occupancy):
         spatial_info (numpy.ndarray): 1D array of spatial information values for each neuron.
 
     """
-
     # Calculate occupancy probability
     occupancy_prob = occupancy / np.sum(occupancy)
 
@@ -183,3 +218,98 @@ def calculate_spatial_info(firing_rate_maps, occupancy):
     spatial_info = spatial_info[~np.isnan(spatial_info)]
 
     return spatial_info
+
+
+def plot_tuning_curves(firing_rate_maps, session_path, subset, onset_col, save_folder):
+    """
+    Plots tuning curves based on firing rate maps and saves the plot as an image file.
+
+    Args:
+        firing_rate_maps (numpy.ndarray): Array containing firing rate maps.
+            Each row represents the firing rates of a cell across different locations.
+        session_path (WindowsPath): Path of the session.
+        subset_number (int): Number of the subset.
+        save_folder (str): Path of the folder to save the image to.
+
+    Returns:
+        None
+    """
+
+    plt.figure(figsize=(15, 5))
+
+    # Find the location of the peak firing rate for each cell
+    peak_locations = firing_rate_maps.argmax(axis=1)
+
+    # Sort the firing rate maps based on the peak locations
+    ix = np.argsort(peak_locations)
+
+    # Plot the sorted firing rate maps
+    plt.imshow(firing_rate_maps[ix, :], cmap="inferno", aspect="auto")
+
+    # Set the x-axis label
+    plt.xlabel("location (bins)")
+
+    # Set the y-axis label
+    plt.ylabel("cell #")
+
+    # Add a colorbar to the plot
+    plt.colorbar()
+
+    # Get the session number from the session path
+    session_number = os.path.basename(session_path)
+
+    # Get the subset label from the subset data
+    subset_number = subset["env_label"].unique().item()
+
+    # Set the image file name
+    image_name = f"{session_number}_subset_{subset_number}_{onset_col}_ratemaps.png"
+
+    # Set the complete save path including the folder and image name
+    save_path = os.path.join(save_folder, image_name)
+
+    # Save the plot as an image file
+    plt.savefig(save_path)
+
+    # Display the plot
+    plt.show()
+
+
+def plot_spatial_info(spatial_info, session_path, subset, onset_col, save_folder):
+    """
+    Plot a histogram of spatial information and save the plot as an image file.
+
+    Parameters:
+        spatial_info (list or array-like): The spatial information data.
+        session_path (WindowsPath): Path of the session.
+        subset_data (pandas.DataFrame): Subset data containing the desired subset.
+        save_folder (str): Path of the folder to save the image to.
+
+    Returns:
+        None
+    """
+    # Compute histogram values
+    hist, bins = np.histogram(spatial_info, bins=10)
+
+    # Plot the histogram
+    plt.bar(bins[:-1], hist, width=np.diff(bins), edgecolor="black")
+    plt.xlabel("Spatial Information per Spike")
+    plt.ylabel("Frequency")
+    plt.title("Histogram of Spatial Information")
+
+    # Get the session number from the session path
+    session_number = os.path.basename(session_path)
+
+    # Get the subset label from the subset data
+    subset_number = subset["env_label"].unique().item()
+
+    # Set the image file name
+    image_name = f"{session_number}_subset_{subset_number}_{onset_col}_spatial_info_histogram.png"
+
+    # Set the complete save path including the folder and image name
+    save_path = os.path.join(save_folder, image_name)
+
+    # Save the plot as an image file
+    plt.savefig(save_path)
+
+    # Display the plot
+    plt.show()
