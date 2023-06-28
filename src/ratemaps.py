@@ -63,7 +63,7 @@ def get_spike_positions(n_data, norm_pos, b_data):
     """
     spikes = n_data["deconvolved"]
     dt = 1 / 30.0  # scanner recording frequency
-    end_time = n_data["traces"].shape[1]
+    end_time = n_data["traces"].shape[1]*dt
     scanner_times = np.arange(0, end_time, dt)
 
     spike_times = []
