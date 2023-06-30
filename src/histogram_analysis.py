@@ -99,9 +99,16 @@ def position_event_histogram(b_data, trial_data, session_path, save_folder):
 
     # Plot a histogram of the normalized position data with markers for the event onsets.
     plt.hist(norm_pos, bins=30, density=True)
-    plt.axvline(x=np.mean(rz_onsets), c="r")
-    plt.axvline(x=np.mean(tunnel1_onsets), c="g")
-    plt.axvline(x=np.nanmean(sound_onsets), c="m")
+    plt.axvline(x=np.mean(rz_onsets), c="r", label="Reward Zone Onset")
+    plt.axvline(x=np.mean(tunnel1_onsets), c="g", label="Tunnel1 Onset")
+    plt.axvline(x=np.nanmean(sound_onsets), c="m", label="Sound Onset")
+
+    # Add legend
+    plt.legend()
+
+    # Add axis labels
+    plt.xlabel("Normalized Position")
+    plt.ylabel("Probability Density")
 
     # Get the session number from the session path
     session_number = os.path.basename(session_path)
