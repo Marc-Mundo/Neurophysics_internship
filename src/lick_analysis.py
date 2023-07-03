@@ -100,11 +100,15 @@ def lick_eventplot(trial_data, b_data, session_path, save_folder):
     plt.ylabel("Trial")
     plt.title("Eventplot of Licks per Trial")
 
-    # Get the session number from the session path
+    # Get the session number and parent folder from the session path
     session_number = os.path.basename(session_path)
+    parent_folder = os.path.basename(os.path.dirname(session_path))
+
+    # Concatenate the parent folder and session number
+    session_name = f"{parent_folder}_{session_number}"
 
     # Set the image file name
-    image_name = f"{session_number}_lick_eventplot.png"
+    image_name = f"{session_name}_lick_event_plot.png"
 
     # Set the complete save path including the folder and image name
     save_path = os.path.join(save_folder, image_name)
@@ -114,3 +118,5 @@ def lick_eventplot(trial_data, b_data, session_path, save_folder):
 
     # Show the plot.
     plt.show()
+
+    return lick_counter, reward_licks, reward_licks_list

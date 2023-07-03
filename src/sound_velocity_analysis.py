@@ -160,13 +160,24 @@ def avg_std_sem_velocity(vel_matrix, t_on, t_off, session_path, save_folder):
     plt.fill_between(t, avg_vel - sem_vel, avg_vel + sem_vel, alpha=0.5)
 
     # Draw a red vertical line at the time of sound onset.
-    plt.axvline(x=0, c="r")
+    plt.axvline(x=0, c="r", label="Sound Onset")
 
-    # Get the session number from the session path
+    # Add legend
+    plt.legend()
+
+    # Add x and y labels
+    plt.xlabel("Frame Number (*1000)")
+    plt.ylabel("Velocity (frames/s)")
+
+    # Get the session number and parent folder from the session path
     session_number = os.path.basename(session_path)
+    parent_folder = os.path.basename(os.path.dirname(session_path))
+
+    # Concatenate the parent folder and session number
+    session_name = f"{parent_folder}_{session_number}"
 
     # Set the image file name
-    image_name = f"{session_number}_average_velocity_plot.png"
+    image_name = f"{session_name}_average_velocity_plot.png"
 
     # Set the complete save path including the folder and image name
     save_path = os.path.join(save_folder, image_name)
