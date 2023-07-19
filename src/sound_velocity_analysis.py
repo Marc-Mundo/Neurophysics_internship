@@ -9,7 +9,15 @@ import os
 
 
 def compute_velocity(
-    b_data, dt=1.0 / 1000.0, pos_sigma=2, vel_sigma=50, vel_win=10000, vel_smooth=100
+    b_data,
+    session_path,
+    save_folder,
+    dt=1.0 / 1000.0,
+    pos_sigma=2,
+    vel_sigma=50,
+    vel_win=10000,
+    vel_smooth=100,
+    show_plot=True,
 ):
     """
     Computes the velocity matrix from the position data in b_data using Gaussian filtering.
@@ -41,19 +49,40 @@ def compute_velocity(
 
     # Add labels and title to the velocity plot.
     plt.xlabel("Frame number")
-    plt.ylabel("Velocity (m/s)")
+    plt.ylabel("Velocity (cm/s)")
     # plt.title('Velocity plot')
 
-    # Show the plot.
-    plt.show()
+    # Get the session number and parent folder from the session path
+    session_number = os.path.basename(session_path)
+    parent_folder = os.path.basename(os.path.dirname(session_path))
+
+    # Concatenate the parent folder and session number
+    session_name = f"{parent_folder}_{session_number}"
+
+    # Set the image file name
+    image_name = f"{session_name}_velocity_plot.png"
+
+    # Set the complete save path including the folder and image name
+    save_path = os.path.join(save_folder, image_name)
+
+    # Save the plot as an image file
+    plt.savefig(save_path)
+
+    # If show_plot is True, then display the plot
+    if show_plot:
+        plt.show()
+    else:
+        plt.close()  # Close the plot if show_plot is False, so it's not shown on the screen.
 
     # Return the velocity data.
     return vel
 
 
-def pos_vel_scatterplot(norm_pos, vel, nbins=50):
+def pos_vel_histogram(
+    norm_pos, vel, session_path, save_folder, nbins=50, show_plot=True
+):
     """
-    Create a scatter plot of the relationship between position and velocity
+    Create a histogram plot of the relationship between position and velocity
     using binned statistics.
 
     PARAMETERS:
@@ -62,10 +91,10 @@ def pos_vel_scatterplot(norm_pos, vel, nbins=50):
     vel : array-like
             The velocities.
     nbins : int, optional
-            The number of bins to use for the scatter plot (default=50).
+            The number of bins to use for the histogram plot (default=50).
 
     RETURNS:
-    A scatterplot with graph between datapoints to visualize the relationship between position and velocity.
+    A histogram with graph between datapoints to visualize the relationship between position and velocity.
     """
     # Calculate binned statistics of velocity as a function of position.
     avg_vel, edges, _ = binned_statistic(norm_pos, vel, bins=nbins)
@@ -76,12 +105,31 @@ def pos_vel_scatterplot(norm_pos, vel, nbins=50):
     # Plot scatter plot with x-axis labeled "Position", y-axis labeled "Velocity",
     # and title "Position vs Velocity Scatterplot".
     plt.plot(centers, avg_vel)
-    plt.xlabel("Position")
-    plt.ylabel("Velocity")
+    plt.xlabel("Normalized Position")
+    plt.ylabel("Velocity cm/s")
     # plt.title('Position vs Velocity Scatterplot')
 
-    # Display the scatter plot.
-    plt.show()
+    # Get the session number and parent folder from the session path
+    session_number = os.path.basename(session_path)
+    parent_folder = os.path.basename(os.path.dirname(session_path))
+
+    # Concatenate the parent folder and session number
+    session_name = f"{parent_folder}_{session_number}"
+
+    # Set the image file name
+    image_name = f"{session_name}_pos_vel_histogram_plot.png"
+
+    # Set the complete save path including the folder and image name
+    save_path = os.path.join(save_folder, image_name)
+
+    # Save the plot as an image file
+    plt.savefig(save_path)
+
+    # If show_plot is True, then display the plot
+    if show_plot:
+        plt.show()
+    else:
+        plt.close()  # Close the plot if show_plot is False, so it's not shown on the screen.
 
 
 def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
@@ -98,12 +146,14 @@ def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
     RETURNS:
     vel_matrix (numpy.ndarray): a 2D array of velocity values for each trial, with shape (number of trials, t_on + t_off).
     """
+    max_trials = len(trial_matrix)
+
     # Initialize the velocity matrix and count variable.
     vel_matrix = np.zeros((len(trial_matrix), t_on + t_off))
     count = 0
 
     # Cycle over the trials using integer indexing.
-    for i in range(len(trial_matrix)):
+    for i in range(max_trials):
         # Get the current trial row.
         row = trial_matrix.iloc[i]
 
@@ -113,17 +163,23 @@ def computed_sliced_matrix(trial_matrix, vel, t_on, t_off):
             offset = row["sound_onset"].astype(int) + t_off  # 2 seconds after.
             trial_vel = vel[onset:offset]
 
+            # Check if trial_vel is not empty before adding to vel_matrix
+            if trial_vel.size > 0:
+                vel_matrix[count, : trial_vel.size] = trial_vel
+
             # Add the trial's velocity timecourse to the velocity matrix.
-            vel_matrix[count, :] = trial_vel
             count += 1
 
-    # Truncate the velocity matrix to remove rows with NaN values.
-    vel_matrix = vel_matrix[:count, :]
+    # After the loop, you might have some empty rows in vel_matrix due to skipped trials.
+    # You can remove these empty rows to have a clean vel_matrix with only valid trials.
+    vel_matrix = vel_matrix[:count]
 
     return vel_matrix
 
 
-def avg_std_sem_velocity(vel_matrix, t_on, t_off, session_path, save_folder):
+def avg_std_sem_velocity(
+    vel_matrix, t_on, t_off, session_path, save_folder, show_plot=True
+):
     """
     Computes the average, standard deviation, and standard error of the mean of velocity from a velocity matrix,
     and plots the average velocity over time with the fill_between visible.
@@ -166,8 +222,8 @@ def avg_std_sem_velocity(vel_matrix, t_on, t_off, session_path, save_folder):
     plt.legend()
 
     # Add x and y labels
-    plt.xlabel("Frame Number (*1000)")
-    plt.ylabel("Velocity (frames/s)")
+    plt.xlabel("Time(s)")
+    plt.ylabel("Velocity (cm/s)")
 
     # Get the session number and parent folder from the session path
     session_number = os.path.basename(session_path)
@@ -185,8 +241,11 @@ def avg_std_sem_velocity(vel_matrix, t_on, t_off, session_path, save_folder):
     # Save the plot as an image file
     plt.savefig(save_path)
 
-    # Show the plot.
-    plt.show()
+    # If show_plot is True, then display the plot
+    if show_plot:
+        plt.show()
+    else:
+        plt.close()  # Close the plot if show_plot is False, so it's not shown on the screen.
 
     # Return the average, standard deviation, and standard error of the mean of velocity as a tuple.
     return avg_vel, std_vel, sem_vel
