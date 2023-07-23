@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-def lick_counter(trial_data, b_data):
+def rz_lick_counter(trial_data, b_data):
     """
     Calculates the number of licks within a specified time frame and computes the percentage of reward-related licks.
 
@@ -37,7 +37,7 @@ def lick_counter(trial_data, b_data):
     return lick_counter, reward_licks
 
 
-def lick_eventplot(trial_data, b_data, session_path, save_folder):
+def lick_eventplot(trial_data, b_data, session_path, save_folder, show_plot=True):
     """
     Generate an eventplot of licks per trial based on trial_data and b_data
     and save the plot as an image file.
@@ -62,6 +62,8 @@ def lick_eventplot(trial_data, b_data, session_path, save_folder):
 
     # Numpy array of the number of licks during the lick time.
     licks = b_data["lick_onsets"]
+
+    total_licks = len(licks)
 
     # Init the lick counter.
     lick_counter = 0
@@ -113,10 +115,12 @@ def lick_eventplot(trial_data, b_data, session_path, save_folder):
     # Set the complete save path including the folder and image name
     save_path = os.path.join(save_folder, image_name)
 
-    # Save the plot as an image file
-    plt.savefig(save_path)
+    # Save the plot as an image file if show_plot is True
+    if show_plot:
+        plt.savefig(save_path)
+        plt.show()
+    else:
+        plt.savefig(save_path)
+        plt.close()  # Close the plot if show_plot is False, so it's not shown on the screen.
 
-    # Show the plot.
-    plt.show()
-
-    return lick_counter, reward_licks, reward_licks_list
+    return lick_counter, total_licks, reward_licks, reward_licks_list
