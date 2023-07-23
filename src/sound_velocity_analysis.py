@@ -291,3 +291,77 @@ def ttest_speed_distribution(vel_matrix, t_on, alpha=0.05):
         )
 
     return t_stat, p_val
+
+
+def plot_combined_average_velocity(
+    all_vel_matrices, t_on, t_off, save_folder, show_plot=True
+):
+    """
+    Plots the combined average velocity over time with the fill_between visible.
+    Saves the plot to the specified save_folder if show_plot is True.
+
+    PARAMETERS:
+    all_vel_matrices (list): A list of 2D numpy arrays where each array represents velocity data from a different session.
+    t_on (int): The duration of the time period before sound onset, in milliseconds.
+    t_off (int): The duration of the time period after sound onset, in milliseconds.
+    save_folder (str): Path of the folder to save the image to.
+    show_plot (bool, optional): Whether to display the plot. Defaults to True.
+
+    RETURNS:
+    tuple: A tuple of three numpy arrays containing the combined average velocity, standard deviation,
+           and standard error of the mean of velocity, respectively.
+    """
+    # Combine the velocity matrices from all sessions
+    combined_vel_matrix = np.concatenate(all_vel_matrices, axis=0)
+
+    # Compute the average velocity across trials for each time point.
+    avg_vel_combined = np.mean(combined_vel_matrix, axis=0)
+
+    # Compute the standard deviation of velocity across trials for each time point.
+    std_vel_combined = np.std(combined_vel_matrix, axis=0)
+
+    # Compute the standard error of the mean of velocity across trials for each time point.
+    sem_vel_combined = np.std(combined_vel_matrix, axis=0) / np.sqrt(
+        combined_vel_matrix.shape[0]
+    )
+
+    # Generate an array of time points in seconds.
+    t = np.linspace(-t_on / 1000, t_off / 1000, t_on + t_off)
+
+    # Plot the combined average velocity over time.
+    plt.plot(t, avg_vel_combined)
+
+    # Fill the area between the upper and lower bounds of the standard error of the mean.
+    plt.fill_between(
+        t,
+        avg_vel_combined - sem_vel_combined,
+        avg_vel_combined + sem_vel_combined,
+        alpha=0.5,
+    )
+
+    # Draw a red vertical line at the time of sound onset.
+    plt.axvline(x=0, c="r", label="Sound Onset")
+
+    # Add legend
+    plt.legend()
+
+    # Add x and y labels
+    plt.xlabel("Time(s)")
+    plt.ylabel("Velocity (cm/s)")
+
+    # Set the image file name
+    image_name = "average_velocity_plot_combined.png"
+
+    # Set the complete save path including the folder and image name
+    save_path = os.path.join(save_folder, image_name)
+
+    # Save the plot as an image file if show_plot is True
+    if show_plot:
+        plt.savefig(save_path)
+        plt.show()
+    else:
+        plt.savefig(save_path)
+        plt.close()  # Close the plot if show_plot is False, so it's not shown on the screen.
+
+    # Return the average velocity, standard deviation, and standard error of the mean of velocity as a tuple.
+    return avg_vel_combined, std_vel_combined, sem_vel_combined
