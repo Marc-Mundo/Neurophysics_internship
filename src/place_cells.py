@@ -540,3 +540,23 @@ def process_sessions_rz(
 
     # Return the updated results dataframe
     return results_df
+
+
+def calculate_place_cell_statistics(null_spatial_info_distr, spatial_info):
+    """
+    Calculate place cell statistics.
+
+    Parameters:
+    - null_spatial_info_distr (numpy.ndarray): An array containing spatial information values from null distribution.
+    - spatial_info (numpy.ndarray): An array containing spatial information values.
+
+    Returns:
+    - place_cell_th (float): The 95th percentile of the null_spatial_info_distr.
+    - n_place_cells (int): The number of place cells (values in spatial_info greater than place_cell_th).
+    - fraction (float): The fraction of place cells in spatial_info.
+    """
+    place_cell_th = np.percentile(null_spatial_info_distr, 95)
+    n_place_cells = sum(i > place_cell_th for i in spatial_info)
+    fraction = n_place_cells / len(spatial_info)
+
+    return place_cell_th, n_place_cells, fraction
